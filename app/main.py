@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import engine, Base
-from app.models import paper
+from app.models import paper, user
 from app.api import papers as papers_router
+from app.api import auth as auth_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(papers_router.router)
+app.include_router(auth_router.router)
 
 @app.get("/")
 def home():
