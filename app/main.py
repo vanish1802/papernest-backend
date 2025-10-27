@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import engine, Base
 from app.models import paper
+from app.api import papers as papers_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -18,6 +19,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(papers_router.router)
 
 @app.get("/")
 def home():
