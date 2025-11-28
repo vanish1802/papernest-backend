@@ -3,7 +3,7 @@ import requests
 from datetime import datetime
 
 # Configuration
-API_URL = "http://localhost:8000"
+API_URL = "https://papernest-api.onrender.com"
 
 # Page config
 st.set_page_config(
