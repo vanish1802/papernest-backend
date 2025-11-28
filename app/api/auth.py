@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse
-from app.core.security import hash_password
+from app.schemas.user import UserCreate, UserResponse, UserLogin, LoginResponse
+from app.core.security import hash_password, verify_password
+from app.core.sessions import create_session
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -34,3 +36,28 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+@router.post("/login", response_model=LoginResponse)
+def login(credentials: UserLogin, db: Session = Depends(get_db)):
+    """Login user and return session ID"""
+    # Find user by username
+    user = db.query(User).filter(User.username == credentials.username).first()
+    
+    if not user or not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password"
+        )
+    
+    # Create session
+    session_id = create_session(user.id)
+    
+    return LoginResponse(
+        session_id=session_id,
+        user=UserResponse(
+            id=user.id,
+            email=user.email,
+            username=user.username
+        )
+    )

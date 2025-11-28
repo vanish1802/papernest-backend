@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    container_name: papernest_db
+    environment:
+      POSTGRES_USER: papernest_user
+      POSTGRES_PASSWORD: papernest_pass
+      POSTGRES_DB: papernest_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U papernest_user -d papernest_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Application
+  web:
+    build: .
+    container_name: papernest_api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://papernest_user:papernest_pass@db:5432/papernest_db
+      SECRET_KEY: prod-secret-key-change-in-production
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
+
