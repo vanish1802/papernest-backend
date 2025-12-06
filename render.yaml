@@ -1,7 +1,7 @@
 services:
-  # PostgreSQL Database
-  - type: pserv
-    name: papernest-db
+  # Backend API
+  - type: web
+    name: papernest-backend
     env: docker
     plan: free
     dockerfilePath: ./Dockerfile
@@ -27,9 +27,9 @@ services:
     envVars:
       - key: API_URL
         fromService:
-          type: pserv
-          name: papernest-db  # Use the backend service name here if possible, but usually Render uses full URL
-          envVarKey: RENDER_EXTERNAL_URL # Placeholder, user needs to set manual URL or service discovery
+          type: web
+          name: papernest-backend
+          envVarKey: RENDER_EXTERNAL_URL
       - key: PYTHON_VERSION
         value: 3.9
 
