@@ -14,7 +14,7 @@ def get_embedding_model():
         _model = SentenceTransformer('all-MiniLM-L6-v2')
     return _model
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[str]:
     """
     Split text into chunks with overlap.
     Simple character-based splitting for basic RAG.
