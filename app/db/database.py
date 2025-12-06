@@ -12,6 +12,10 @@ DATABASE_URL = os.getenv(
 
 print(f"🔍 DEBUG: Connecting to database: {DATABASE_URL}")
 
+# Fix for Render (postgres:// -> postgresql://)
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 if "sqlite" in DATABASE_URL:
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
