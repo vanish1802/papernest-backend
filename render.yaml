@@ -14,6 +14,24 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: 3.9
+      - key: GROQ_API_KEY
+        sync: false
+
+  # Frontend (Streamlit)
+  - type: web
+    name: papernest-frontend
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    startCommand: streamlit run streamlit_app.py --server.port 10000 --server.address 0.0.0.0
+    envVars:
+      - key: API_URL
+        fromService:
+          type: pserv
+          name: papernest-db  # Use the backend service name here if possible, but usually Render uses full URL
+          envVarKey: RENDER_EXTERNAL_URL # Placeholder, user needs to set manual URL or service discovery
+      - key: PYTHON_VERSION
+        value: 3.9
 
 databases:
   - name: papernest-db

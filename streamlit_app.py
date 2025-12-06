@@ -3,7 +3,9 @@ import requests
 from datetime import datetime
 
 # Configuration
-API_URL = "https://papernest-api.onrender.com"
+import os
+# Configuration
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 # Page config
 st.set_page_config(
@@ -87,7 +89,7 @@ if not st.session_state.session_id:
 headers = {"X-Session-ID": st.session_state.session_id}
 
 # Create tabs
-tab1, tab2 = st.tabs(["📄 My Papers", "➕ Add New Paper"])
+tab1, tab2, tab3 = st.tabs(["📄 My Papers", "➕ Add New Paper", "💬 Chat with Paper"])
 
 # Tab 1: View Papers
 with tab1:
@@ -196,11 +198,21 @@ with tab2:
             priority = st.selectbox("Priority", ["LOW", "MEDIUM", "HIGH"])
         
         categories = st.text_input("Categories (optional)", placeholder="e.g., Deep Learning, Computer Vision")
-        paper_text = st.text_area(
-            "Paper Text (for AI summarization)",
-            height=200,
-            placeholder="Paste the paper content here for AI summarization..."
-        )
+        
+        # File uploader vs Text Area
+        upload_option = st.radio("Input Method", ["Upload PDF", "Manual Text Entry"], horizontal=True)
+        
+        uploaded_file = None
+        paper_text = None
+        
+        if upload_option == "Upload PDF":
+            uploaded_file = st.file_uploader("Upload Paper PDF", type=["pdf"])
+        else:
+            paper_text = st.text_area(
+                "Paper Text (for AI summarization)",
+                height=200,
+                placeholder="Paste the paper content here..."
+            )
         
         submitted = st.form_submit_button("➕ Add Paper", type="primary")
         
@@ -209,18 +221,37 @@ with tab2:
                 st.error("❌ Title and Authors are required!")
             else:
                 try:
-                    resp = requests.post(
-                        f"{API_URL}/papers/",
-                        headers=headers,
-                        json={
+                    if uploaded_file:
+                        # Upload PDF endpoint
+                        files = {"file": (uploaded_file.name, uploaded_file, "application/pdf")}
+                        data = {
                             "title": title,
                             "authors": authors,
                             "status": status,
                             "priority": priority,
-                            "categories": categories if categories else None,
-                            "paper_text": paper_text if paper_text else None
+                            "categories": categories if categories else ""
                         }
-                    )
+                        resp = requests.post(
+                            f"{API_URL}/papers/upload",
+                            headers=headers,
+                            files=files,
+                            data=data
+                        )
+                    else:
+                        # Manual entry endpoint
+                        resp = requests.post(
+                            f"{API_URL}/papers/",
+                            headers=headers,
+                            json={
+                                "title": title,
+                                "authors": authors,
+                                "status": status,
+                                "priority": priority,
+                                "categories": categories if categories else None,
+                                "paper_text": paper_text if paper_text else None
+                            }
+                        )
+                    
                     if resp.status_code == 201:
                         st.success("✅ Paper added successfully!")
                         st.balloons()
@@ -229,6 +260,86 @@ with tab2:
                         st.error(f"❌ Failed: {resp.json().get('detail', 'Unknown error')}")
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
+
+# Tab 3: Chat with Paper
+with tab3:
+    st.header("💬 Chat with Research Paper")
+    
+    # 1. Select Paper
+    try:
+        resp = requests.get(f"{API_URL}/papers/", headers=headers)
+        if resp.status_code == 200:
+            papers = resp.json()
+            if not papers:
+                st.info("No papers available to chat with.")
+            else:
+                paper_options = {p['id']: f"{p['title']} (ID: {p['id']})" for p in papers}
+                selected_paper_id = st.selectbox(
+                    "Select a paper to chat with:",
+                    options=list(paper_options.keys()),
+                    format_func=lambda x: paper_options[x]
+                )
+                
+                # Chat Interface
+                if "chat_history" not in st.session_state:
+                    st.session_state.chat_history = {}
+                
+                if selected_paper_id not in st.session_state.chat_history:
+                    # Initialize with a welcome message
+                    st.session_state.chat_history[selected_paper_id] = [
+                        {"role": "assistant", "content": f"Hello! I'm ready to answer questions about: **{paper_options[selected_paper_id]}**"}
+                    ]
+                
+                # Chat Header & Clear Button
+                c1, c2 = st.columns([6, 1])
+                with c1:
+                    st.caption("🤖 Powered by Groq LPU™")
+                with c2:
+                    if st.button("Clear", key=f"clear_{selected_paper_id}", type="tertiary"):
+                        st.session_state.chat_history[selected_paper_id] = []
+                        st.rerun()
+
+                # Display history container
+                chat_container = st.container(height=500)
+                with chat_container:
+                    for msg in st.session_state.chat_history[selected_paper_id]:
+                        avatar = "👤" if msg["role"] == "user" else "🤖"
+                        with st.chat_message(msg["role"], avatar=avatar):
+                            st.markdown(msg["content"])
+                
+                # User Input
+                if prompt := st.chat_input("Ask a question about this paper..."):
+                    # Add user message
+                    st.session_state.chat_history[selected_paper_id].append({"role": "user", "content": prompt})
+                    with chat_container:
+                        with st.chat_message("user", avatar="👤"):
+                            st.markdown(prompt)
+                    
+                    # Get response
+                    with chat_container:
+                        with st.chat_message("assistant", avatar="🤖"):
+                            message_placeholder = st.empty()
+                            with st.spinner("Thinking..."):
+                                try:
+                                    resp = requests.post(
+                                        f"{API_URL}/papers/{selected_paper_id}/chat",
+                                        headers=headers,
+                                        data={"query": prompt}
+                                    )
+                                    if resp.status_code == 200:
+                                        response_text = resp.json().get("response", "No response received.")
+                                        message_placeholder.markdown(response_text)
+                                        st.session_state.chat_history[selected_paper_id].append({"role": "assistant", "content": response_text})
+                                    else:
+                                        error_msg = f"Error: {resp.json().get('detail')}"
+                                        message_placeholder.error(error_msg)
+                                        st.session_state.chat_history[selected_paper_id].append({"role": "assistant", "content": error_msg})
+                                except Exception as e:
+                                    st.error(f"Connection Error: {str(e)}")
+        else:
+             st.error("Failed to load papers list.")
+    except Exception as e:
+        st.error(f"Error loading papers: {str(e)}")
 
 # Footer
 st.divider()

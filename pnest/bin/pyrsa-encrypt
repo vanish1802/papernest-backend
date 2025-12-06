@@ -1,4 +1,4 @@
-#!/Users/vanishjain/Documents/papernest-backend/pnest/bin/python3
+#!/home/pamil/Documents/PaperNest/papernest-backend/pnest/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
