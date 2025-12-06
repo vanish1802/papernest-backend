@@ -45,9 +45,13 @@ with st.sidebar:
                         st.success("✅ Logged in successfully!")
                         st.rerun()
                     else:
-                        st.error(f"❌ Login failed: {resp.json().get('detail', 'Unknown error')}")
+                        try:
+                            error_detail = resp.json().get('detail', 'Unknown error')
+                        except:
+                            error_detail = f"Status {resp.status_code}: {resp.text[:200]}"
+                        st.error(f"❌ Login failed: {error_detail}")
                 except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
+                    st.error(f"❌ Connection Error: {str(e)}")
         
         with tab2:
             st.subheader("Register")
@@ -68,9 +72,13 @@ with st.sidebar:
                     if resp.status_code == 201:
                         st.success("✅ Registered! Please login.")
                     else:
-                        st.error(f"❌ Registration failed: {resp.json().get('detail', 'Unknown error')}")
+                        try:
+                            error_detail = resp.json().get('detail', 'Unknown error')
+                        except:
+                            error_detail = f"Status {resp.status_code}: {resp.text[:200]}"
+                        st.error(f"❌ Registration failed: {error_detail}")
                 except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
+                    st.error(f"❌ Connection Error: {str(e)}")
     else:
         st.success(f"👤 Logged in as: **{st.session_state.username}**")
         if st.button("Logout", type="secondary"):
@@ -257,7 +265,11 @@ with tab2:
                         st.balloons()
                         st.rerun()
                     else:
-                        st.error(f"❌ Failed: {resp.json().get('detail', 'Unknown error')}")
+                        try:
+                            error_detail = resp.json().get('detail', 'Unknown error')
+                        except:
+                            error_detail = f"Status {resp.status_code}: {resp.text[:200]}"
+                        st.error(f"❌ Failed: {error_detail}")
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
 
