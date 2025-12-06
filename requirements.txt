@@ -83,3 +83,5 @@ websockets==15.0.1
 groq
 pypdf
 python-multipart
+sentence-transformers
+scikit-learn

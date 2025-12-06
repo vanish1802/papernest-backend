@@ -7,20 +7,31 @@ client = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
 
+from app.core.rag_utils import retrieve_context
+
 def chat_with_paper(paper_text: str, user_query: str) -> str:
     """
-    Chat with a paper using Groq API.
+    Chat with a paper using RAG and Groq API.
     """
     if not paper_text:
         return "Error: No paper content available to chat with."
 
+    # Retrieve relevant context using RAG
+    # We use a generous window (e.g., top 5 chunks) to give LLM enough info
+    context = retrieve_context(paper_text, user_query, top_k=5)
+    
+    if not context:
+        context = "No specific relevant context found in the paper. Answer based on general knowledge if possible, or state that the paper doesn't cover this."
+
     system_prompt = f"""You are a helpful research assistant. 
-    You have read the following research paper:
+    You have read a research paper. Here are the most relevant sections to the user's query:
     
-    {paper_text[:25000]}  # Truncate to avoid token limits equivalent
+    ---CONTEXT START---
+    {context}
+    ---CONTEXT END---
     
-    Answer the user's questions based ONLY on the paper content provided above.
-    If the answer is not in the paper, say so.
+    Answer the user's questions based ONLY on the context provided above.
+    If the answer is not in the context, say so.
     """
 
     try:
@@ -35,7 +46,7 @@ def chat_with_paper(paper_text: str, user_query: str) -> str:
                     "content": user_query,
                 }
             ],
-            model="llama-3.3-70b-versatile",  # Updated to supported model
+            model="llama-3.3-70b-versatile",
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
