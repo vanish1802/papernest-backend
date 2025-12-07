@@ -21,4 +21,4 @@ COPY ./streamlit_app.py /code/streamlit_app.py
 EXPOSE 8000
 
 # Start command
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
