@@ -3,9 +3,12 @@ from groq import Groq
 
 # Initialize Groq client
 # Ensure GROQ_API_KEY is set in environment variables
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY"),
-)
+# Helper to lazy-load Groq client
+def get_groq_client():
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY environment variable not set")
+    return Groq(api_key=api_key)
 
 from app.core.rag_utils import retrieve_context
 
@@ -35,6 +38,7 @@ def chat_with_paper(paper_text: str, user_query: str) -> str:
     """
 
     try:
+        client = get_groq_client()
         chat_completion = client.chat.completions.create(
             messages=[
                 {
@@ -65,6 +69,7 @@ def summarize_with_groq(text: str) -> str:
     """
     
     try:
+        client = get_groq_client()
         chat_completion = client.chat.completions.create(
             messages=[
                 {
