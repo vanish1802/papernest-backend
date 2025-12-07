@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+import psutil
+from sqlalchemy import text
 
 from app.db.database import engine, Base
 from app.api import papers as papers_router
@@ -56,4 +58,21 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    # Check Database
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"failed: {str(e)}"
+
+    # Check Memory
+    memory = psutil.virtual_memory()
+    
+    return {
+        "status": "healthy" if db_status == "connected" else "unhealthy",
+        "database": db_status,
+        "memory_used_mb": memory.used / (1024 * 1024),
+        "memory_total_mb": memory.total / (1024 * 1024),
+        "memory_percent": memory.percent
+    }
