@@ -1,6 +1,4 @@
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from typing import List, Tuple
 from functools import lru_cache
 
@@ -11,6 +9,8 @@ _model = None
 def get_embedding_model():
     global _model
     if _model is None:
+        # Lazy import to avoid OOM on startup
+        from sentence_transformers import SentenceTransformer
         _model = SentenceTransformer('all-MiniLM-L6-v2')
     return _model
 
@@ -56,6 +56,7 @@ def retrieve_context(paper_text: str, query: str, top_k: int = 3) -> str:
     query_embedding = model.encode([query])
     
     # Calculate similarity
+    from sklearn.metrics.pairwise import cosine_similarity
     similarities = cosine_similarity(query_embedding, embeddings)[0]
     
     # Get top k indices
