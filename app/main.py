@@ -13,6 +13,11 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="PaperNest API", version="1.0.0")
 
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 PaperNest Backend Starting up... (Version: LazyLoad+SecurePassword)")
+
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
