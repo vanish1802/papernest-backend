@@ -1,9 +1,10 @@
 import numpy as np
 from typing import List, Tuple
 from functools import lru_cache
+import gc
 
 # Initialize model (lazy loading handled by library, but we instantiate global)
-# all-MiniLM-L6-v2 is fast and efficient
+# Using paraphrase-MiniLM-L3-v2: smaller (60MB) and faster than all-MiniLM-L6-v2
 _model = None
 
 def get_embedding_model():
@@ -11,13 +12,14 @@ def get_embedding_model():
     if _model is None:
         # Lazy import to avoid OOM on startup
         from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer('all-MiniLM-L6-v2')
+        # Use smaller, faster model for memory efficiency
+        _model = SentenceTransformer('paraphrase-MiniLM-L3-v2')
     return _model
 
-def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 100) -> List[str]:
     """
     Split text into chunks with overlap.
-    Simple character-based splitting for basic RAG.
+    Reduced chunk size for memory efficiency.
     """
     if not text:
         return []
@@ -30,15 +32,22 @@ def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[st
         start = end - overlap
     return chunks
 
-@lru_cache(maxsize=10)
+@lru_cache(maxsize=3)  # Reduced cache size to save memory
 def generate_embeddings_cached(text_hash: int, text_content: str) -> Tuple[np.ndarray, List[str]]:
     """
     Generate embeddings for a text. Cached by hash of the text to speed up multi-turn chat.
     Returns (embeddings_matrix, chunks_list)
     """
     chunks = chunk_text(text_content)
+    # Limit to first 10 chunks for memory efficiency (enough for demo)
+    chunks = chunks[:10]
+    
     model = get_embedding_model()
-    embeddings = model.encode(chunks)
+    embeddings = model.encode(chunks, show_progress_bar=False)
+    
+    # Force garbage collection after encoding
+    gc.collect()
+    
     return embeddings, chunks
 
 def retrieve_context(paper_text: str, query: str, top_k: int = 3) -> str:
@@ -53,7 +62,7 @@ def retrieve_context(paper_text: str, query: str, top_k: int = 3) -> str:
     embeddings, chunks = generate_embeddings_cached(hash(paper_text), paper_text)
     
     model = get_embedding_model()
-    query_embedding = model.encode([query])
+    query_embedding = model.encode([query], show_progress_bar=False)
     
     # Calculate similarity
     from sklearn.metrics.pairwise import cosine_similarity
@@ -64,4 +73,9 @@ def retrieve_context(paper_text: str, query: str, top_k: int = 3) -> str:
     
     # Construct context
     context_chunks = [chunks[i] for i in top_indices]
+    
+    # Force garbage collection
+    gc.collect()
+    
     return "\n\n".join(context_chunks)
+
