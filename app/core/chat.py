@@ -1,5 +1,9 @@
 import os
 from groq import Groq
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize Groq client
 # Ensure GROQ_API_KEY is set in environment variables
@@ -21,7 +25,7 @@ def chat_with_paper(paper_text: str, user_query: str) -> str:
 
     # Retrieve relevant context using RAG
     # We use a generous window (e.g., top 5 chunks) to give LLM enough info
-    context = retrieve_context(paper_text, user_query, top_k=5)
+    context = retrieve_context(paper_text, user_query, top_k=7)
     
     if not context:
         context = "No specific relevant context found in the paper. Answer based on general knowledge if possible, or state that the paper doesn't cover this."

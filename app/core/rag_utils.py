@@ -16,7 +16,7 @@ def get_embedding_model():
         _model = SentenceTransformer('paraphrase-MiniLM-L3-v2')
     return _model
 
-def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 100) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[str]:
     """
     Split text into chunks with overlap.
     Reduced chunk size for memory efficiency.
@@ -50,7 +50,7 @@ def generate_embeddings_cached(text_hash: int, text_content: str) -> Tuple[np.nd
     
     return embeddings, chunks
 
-def retrieve_context(paper_text: str, query: str, top_k: int = 3) -> str:
+def retrieve_context(paper_text: str, query: str, top_k: int = 7) -> str:
     """
     Retrieve relevant chunks for a query from the paper text.
     """
