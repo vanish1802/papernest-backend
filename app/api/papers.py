@@ -204,16 +204,27 @@ async def chat_with_paper_endpoint(
     current_user: User = Depends(get_current_user)
 ):
     """Chat with a specific paper"""
-    paper = db.query(Paper).filter(
-        Paper.id == paper_id,
-        Paper.user_id == current_user.id
-    ).first()
-    
-    if not paper:
-        raise HTTPException(status_code=404, detail="Paper not found")
+    try:
+        paper = db.query(Paper).filter(
+            Paper.id == paper_id,
+            Paper.user_id == current_user.id
+        ).first()
         
-    if not paper.paper_text:
-        raise HTTPException(status_code=400, detail="Paper has no text content")
-        
-    response = chat_with_paper(paper.paper_text, query)
-    return {"response": response}
+        if not paper:
+            raise HTTPException(status_code=404, detail="Paper not found")
+            
+        if not paper.paper_text:
+            raise HTTPException(status_code=400, detail="Paper has no text content")
+            
+        response = chat_with_paper(paper.paper_text, query)
+        return {"response": response}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Chat failed: {str(e)}"
+        )
+
