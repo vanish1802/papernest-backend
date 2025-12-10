@@ -1,3 +1,4 @@
+# Version: 2.0 - Includes SHA256 password fix and lazy loading
 services:
   # Backend API
   - type: web
