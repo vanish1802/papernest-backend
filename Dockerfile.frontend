@@ -1,0 +1,17 @@
+# Lightweight Dockerfile for Streamlit Frontend
+FROM python:3.9-slim
+
+WORKDIR /code
+
+# Copy only frontend requirements
+COPY requirements-frontend.txt .
+RUN pip install --no-cache-dir -r requirements-frontend.txt
+
+# Copy frontend app
+COPY streamlit_app.py .
+
+# Expose port
+EXPOSE 10000
+
+# Run Streamlit
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port", "10000", "--server.address", "0.0.0.0"]

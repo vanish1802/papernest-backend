@@ -23,8 +23,7 @@ services:
     name: papernest-frontend
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile
-    dockerCommand: streamlit run streamlit_app.py --server.port 10000 --server.address 0.0.0.0
+    dockerfilePath: ./Dockerfile.frontend
     envVars:
       - key: API_URL
         fromService:
