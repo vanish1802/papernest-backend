@@ -4,7 +4,7 @@ from functools import lru_cache
 import gc
 
 # Initialize model (lazy loading handled by library, but we instantiate global)
-# Using paraphrase-MiniLM-L3-v2: smaller (60MB) and faster than all-MiniLM-L6-v2
+# Using all-MiniLM-L12-v2: smallest viable model (33MB) for Render Free Tier
 _model = None
 
 def get_embedding_model():
@@ -12,9 +12,17 @@ def get_embedding_model():
     if _model is None:
         # Lazy import to avoid OOM on startup
         from sentence_transformers import SentenceTransformer
-        # Use smaller, faster model for memory efficiency
-        _model = SentenceTransformer('paraphrase-MiniLM-L3-v2')
+        # Use smallest model for memory efficiency on Render
+        _model = SentenceTransformer('sentence-transformers/all-MiniLM-L12-v2')
     return _model
+
+def cleanup_model():
+    """Explicitly cleanup model from memory after use"""
+    global _model
+    if _model is not None:
+        del _model
+        _model = None
+        gc.collect()
 
 def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[str]:
     """
@@ -32,6 +40,21 @@ def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[st
         start = end - overlap
     return chunks
 
+def simple_keyword_score(query: str, text: str) -> float:
+    """
+    Simple keyword-based relevance scoring.
+    Returns a score based on how many query words appear in the text.
+    """
+    query_words = set(query.lower().split())
+    text_words = set(text.lower().split())
+    
+    if not query_words:
+        return 0.0
+    
+    # Count matching words
+    matches = query_words.intersection(text_words)
+    return len(matches) / len(query_words)
+
 @lru_cache(maxsize=3)  # Reduced cache size to save memory
 def generate_embeddings_cached(text_hash: int, text_content: str) -> Tuple[np.ndarray, List[str]]:
     """
@@ -45,7 +68,8 @@ def generate_embeddings_cached(text_hash: int, text_content: str) -> Tuple[np.nd
     model = get_embedding_model()
     embeddings = model.encode(chunks, show_progress_bar=False)
     
-    # Force garbage collection after encoding
+    # Aggressive cleanup after encoding
+    cleanup_model()
     gc.collect()
     
     return embeddings, chunks
