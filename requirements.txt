@@ -8,9 +8,8 @@ groq
 pypdf
 email-validator
 psutil
-sentence-transformers
-scikit-learn
-torch>=2.0.0
+cohere
+numpy
 python-jose[cryptography]
 passlib[bcrypt]
 bcrypt==3.2.2
