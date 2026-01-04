@@ -8,13 +8,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_embedding_model():
-    """Get SentenceTransformer model"""
+    """Get FastEmbed model"""
     try:
-        from sentence_transformers import SentenceTransformer
-        # Use a lightweight, high-performance model
-        return SentenceTransformer('all-MiniLM-L6-v2')
+        from fastembed import TextEmbedding
+        # Use a lightweight, high-performance model (defaults to BAAI/bge-small-en-v1.5)
+        # These models are ONNX optimized and very memory efficient (~200MB RAM)
+        return TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
     except ImportError:
-        raise ImportError("Please install sentence-transformers: pip install sentence-transformers")
+        raise ImportError("Please install fastembed: pip install fastembed")
 
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
     """
@@ -34,18 +35,20 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[st
 @lru_cache(maxsize=5)
 def generate_embeddings_cached(text_hash: int, text_content: str) -> Tuple[np.ndarray, List[str]]:
     """
-    Generate embeddings using local SentenceTransformers.
+    Generate embeddings using local FastEmbed.
     Cached by hash of the text to speed up multi-turn chat.
     Returns (embeddings_matrix, chunks_list)
     """
     chunks = chunk_text(text_content)
-    # Limit chunks processing to prevent OOM on small machines if paper is huge
+    # Limit chunks processing
     chunks = chunks[:50] 
     
     model = get_embedding_model()
     
     # Generate embeddings locally
-    embeddings = model.encode(chunks)
+    # fastembed returns a generator of numpy arrays, we convert to list then array
+    embeddings_list = list(model.embed(chunks))
+    embeddings = np.array(embeddings_list)
     
     return embeddings, chunks
 
@@ -61,7 +64,8 @@ def retrieve_context(paper_text: str, query: str, top_k: int = 5) -> str:
     
     # Get query embedding
     model = get_embedding_model()
-    query_embedding = model.encode([query])[0]
+    # model.embed returns generator, we take first item for single query
+    query_embedding = list(model.embed([query]))[0]
     
     # Calculate cosine similarity
     # Normalize vectors
