@@ -3,6 +3,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Read DATABASE_URL from environment variable (set by Docker)
 # Falls back to localhost for local development
 DATABASE_URL = os.getenv(

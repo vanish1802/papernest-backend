@@ -7,20 +7,16 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-def get_cohere_client():
-    """Get Cohere client for embeddings"""
+def get_embedding_model():
+    """Get SentenceTransformer model"""
     try:
-        import cohere
+        from sentence_transformers import SentenceTransformer
+        # Use a lightweight, high-performance model
+        return SentenceTransformer('all-MiniLM-L6-v2')
     except ImportError:
-        raise ImportError("Please install cohere: pip install cohere")
-    
-    api_key = os.environ.get("COHERE_API_KEY")
-    if not api_key:
-        raise ValueError("COHERE_API_KEY environment variable not set")
-    
-    return cohere.Client(api_key)
+        raise ImportError("Please install sentence-transformers: pip install sentence-transformers")
 
-def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
     """
     Split text into chunks with overlap.
     """
@@ -38,31 +34,24 @@ def chunk_text(text: str, chunk_size: int = 2000, overlap: int = 200) -> List[st
 @lru_cache(maxsize=5)
 def generate_embeddings_cached(text_hash: int, text_content: str) -> Tuple[np.ndarray, List[str]]:
     """
-    Generate embeddings using Cohere API.
+    Generate embeddings using local SentenceTransformers.
     Cached by hash of the text to speed up multi-turn chat.
     Returns (embeddings_matrix, chunks_list)
     """
     chunks = chunk_text(text_content)
-    # Limit to first 15 chunks (Cohere can handle more than local models)
-    chunks = chunks[:15]
+    # Limit chunks processing to prevent OOM on small machines if paper is huge
+    chunks = chunks[:50] 
     
-    client = get_cohere_client()
+    model = get_embedding_model()
     
-    # Get embeddings from Cohere API
-    response = client.embed(
-        texts=chunks,
-        model='embed-english-light-v3.0',  # Lightweight, fast, free tier friendly
-        input_type='search_document'
-    )
-    
-    # Convert to numpy array
-    embeddings = np.array(response.embeddings)
+    # Generate embeddings locally
+    embeddings = model.encode(chunks)
     
     return embeddings, chunks
 
-def retrieve_context(paper_text: str, query: str, top_k: int = 7) -> str:
+def retrieve_context(paper_text: str, query: str, top_k: int = 5) -> str:
     """
-    Retrieve relevant chunks for a query from the paper text using Cohere embeddings.
+    Retrieve relevant chunks for a query from the paper text using local embeddings.
     """
     if not paper_text or not query:
         return ""
@@ -71,21 +60,16 @@ def retrieve_context(paper_text: str, query: str, top_k: int = 7) -> str:
     embeddings, chunks = generate_embeddings_cached(hash(paper_text), paper_text)
     
     # Get query embedding
-    client = get_cohere_client()
-    query_response = client.embed(
-        texts=[query],
-        model='embed-english-light-v3.0',
-        input_type='search_query'
-    )
-    query_embedding = np.array(query_response.embeddings)
+    model = get_embedding_model()
+    query_embedding = model.encode([query])[0]
     
     # Calculate cosine similarity
     # Normalize vectors
     embeddings_norm = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-    query_norm = query_embedding / np.linalg.norm(query_embedding, axis=1, keepdims=True)
+    query_norm = query_embedding / np.linalg.norm(query_embedding)
     
     # Compute similarities
-    similarities = np.dot(embeddings_norm, query_norm.T).flatten()
+    similarities = np.dot(embeddings_norm, query_norm)
     
     # Get top k indices
     top_indices = np.argsort(similarities)[-top_k:][::-1]

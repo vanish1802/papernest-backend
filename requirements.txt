@@ -8,7 +8,7 @@ groq
 pypdf
 email-validator
 psutil
-cohere
+sentence-transformers
 numpy
 python-jose[cryptography]
 passlib[bcrypt]
